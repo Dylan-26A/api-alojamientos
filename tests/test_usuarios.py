@@ -171,3 +171,33 @@ def test_actualizacion_parcial_perfil(usuario_autenticado, client):
     assert response.status_code == 200
     data = response.get_json()
     assert data["perfil"]["nombre"] == "SoloNombre"
+
+def test_admin_sin_token(client):
+    response = client.get("/api/v1/admin/usuarios")
+
+    assert response.status_code == 401
+
+
+def test_admin_con_usuario_normal(client, usuario_autenticado):
+    response = client.get(
+        "/api/v1/admin/usuarios",
+        headers=usuario_autenticado["headers"]
+    )
+
+    assert response.status_code == 403
+
+
+def test_admin_con_admin(client, admin_autenticado):
+    response = client.get(
+        "/api/v1/admin/usuarios",
+        headers=admin_autenticado["headers"]
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is True
+    assert isinstance(data["data"], list)
+
+    for usuario in data["data"]:
+        assert "contrasena" not in usuario

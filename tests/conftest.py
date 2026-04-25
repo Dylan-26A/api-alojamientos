@@ -2,6 +2,7 @@ import os
 import pytest
 
 from app import crear_app, db
+from app.dominios.usuarios.servicios import UsuarioServicio
 
 
 @pytest.fixture
@@ -30,7 +31,6 @@ def client(app):
 
 @pytest.fixture
 def usuario_autenticado(client):
-    # Registrar usuario
     client.post(
         "/api/v1/usuarios/registro",
         json={
@@ -39,11 +39,40 @@ def usuario_autenticado(client):
         }
     )
 
-    # Login
     response = client.post(
         "/api/v1/usuarios/login",
         json={
             "correo": "test@example.com",
+            "contrasena": "123456"
+        }
+    )
+
+    token = response.get_json()["token"]
+
+    return {
+        "token": token,
+        "headers": {
+            "Authorization": f"Bearer {token}"
+        }
+    }
+
+
+@pytest.fixture
+def admin_autenticado(client):
+    client.post(
+        "/api/v1/usuarios/registro",
+        json={
+            "correo": "admin@example.com",
+            "contrasena": "123456"
+        }
+    )
+
+    UsuarioServicio.promover_a_admin("admin@example.com")
+
+    response = client.post(
+        "/api/v1/usuarios/login",
+        json={
+            "correo": "admin@example.com",
             "contrasena": "123456"
         }
     )

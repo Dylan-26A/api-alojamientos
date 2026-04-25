@@ -1,21 +1,27 @@
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
-from app.seguridad import requiere_token
+from app.seguridad import requiere_token, requiere_admin
 from app.dominios.usuarios.dtos import RegistroUsuarioDTO, ActualizarPerfilDTO
 from app.dominios.usuarios.servicios import UsuarioServicio
 
 
 usuarios_bp = Blueprint("usuarios", __name__)
+admin_bp = Blueprint("admin", __name__)
 
 registro_dto = RegistroUsuarioDTO()
 actualizar_perfil_dto = ActualizarPerfilDTO()
 
 
+# -----------------------------
+# USUARIOS
+# -----------------------------
+
 @usuarios_bp.route("/registro", methods=["POST"])
 def registro():
     try:
         data = registro_dto.load(request.get_json())
+
         usuario = UsuarioServicio.registrar_usuario(
             correo=data["correo"],
             contrasena=data["contrasena"]
@@ -37,6 +43,7 @@ def registro():
 def login():
     try:
         data = registro_dto.load(request.get_json())
+
         token = UsuarioServicio.iniciar_sesion(
             correo=data["correo"],
             contrasena=data["contrasena"]
@@ -71,6 +78,7 @@ def obtener_perfil(usuario_id):
 def actualizar_perfil(usuario_id):
     try:
         data = actualizar_perfil_dto.load(request.get_json())
+
         perfil = UsuarioServicio.actualizar_perfil(usuario_id, data)
 
         return {
@@ -85,3 +93,19 @@ def actualizar_perfil(usuario_id):
 
     except ValidationError as e:
         return {"errors": e.messages}, 400
+
+
+# -----------------------------
+# ADMIN
+# -----------------------------
+
+@admin_bp.route("/usuarios", methods=["GET"])
+@requiere_admin
+def listar_usuarios(usuario_id):
+    usuarios = UsuarioServicio.listar_todos_los_usuarios()
+
+    return {
+        "success": True,
+        "message": "Lista de usuarios.",
+        "data": usuarios,
+    }, 200

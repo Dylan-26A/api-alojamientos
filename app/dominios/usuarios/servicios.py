@@ -3,6 +3,7 @@ import jwt
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from app import db
 from app.config import Config
 from app.dominios.usuarios.modelos import Usuario, PerfilUsuario
 from app.dominios.usuarios.repositorios import UsuarioRepositorio
@@ -20,16 +21,18 @@ class UsuarioNoEncontradoError(Exception):
     pass
 
 
+class PermisoDenegadoError(Exception):
+    pass
+
+
 class UsuarioServicio:
 
     @staticmethod
     def registrar_usuario(correo, contrasena):
-        # Verificar duplicado
         existente = UsuarioRepositorio.obtener_por_correo(correo)
         if existente:
             raise CorreoYaRegistradoError("El correo ya está registrado")
 
-        # Hashear contraseña
         hash_contrasena = generate_password_hash(contrasena)
 
         usuario = Usuario(
@@ -39,7 +42,6 @@ class UsuarioServicio:
 
         usuario = UsuarioRepositorio.guardar_usuario(usuario)
 
-        # Crear perfil vacío
         perfil = PerfilUsuario(usuario_id=usuario.id)
         UsuarioRepositorio.guardar_perfil(perfil)
 
@@ -62,7 +64,7 @@ class UsuarioServicio:
     @staticmethod
     def _generar_token(usuario):
         payload = {
-            "sub": str(usuario.id),  # IMPORTANTE: string
+            "sub": str(usuario.id),
             "exp": datetime.utcnow() + timedelta(minutes=Config.JWT_EXP_MINUTES)
         }
 
@@ -98,3 +100,32 @@ class UsuarioServicio:
         UsuarioRepositorio.guardar_perfil(perfil)
 
         return perfil
+
+    @staticmethod
+    def listar_todos_los_usuarios():
+        usuarios = Usuario.query.all()
+
+        return [
+            {
+                "id": u.id,
+                "correo": u.correo,
+                "fecha_creacion": u.fecha_creacion.isoformat()
+                if u.fecha_creacion else None,
+                "rol": u.rol,
+            }
+            for u in usuarios
+        ]
+
+    @staticmethod
+    def promover_a_admin(correo):
+        usuario = UsuarioRepositorio.obtener_por_correo(correo)
+
+        if not usuario:
+            raise UsuarioNoEncontradoError(
+                f"No se encontró ningún usuario con correo {correo}"
+            )
+
+        usuario.rol = "admin"
+        db.session.commit()
+
+        return usuario

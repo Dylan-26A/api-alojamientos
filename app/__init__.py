@@ -5,13 +5,9 @@ from flask_migrate import Migrate
 
 from app.config import Config
 
-# Version de la API
 API_VERSION = "v1"
 
-# Instancia de SQLAlchemy
 db = SQLAlchemy()
-
-# Instancia de Flask-Migrate
 migrate = Migrate()
 
 
@@ -20,26 +16,22 @@ def crear_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Inicializar extensiones
     db.init_app(app)
     migrate.init_app(app, db)
     CORS(app, origins=app.config["CORS_ALLOWED_ORIGINS"])
 
-    # Importar modelos
     from app.dominios.usuarios import modelos
-
-    # Importar blueprint y errores
-    from app.dominios.usuarios.controladores import usuarios_bp
+    from app.dominios.usuarios.controladores import usuarios_bp, admin_bp
     from app.dominios.usuarios.servicios import (
         CorreoYaRegistradoError,
         CredencialesInvalidasError,
         UsuarioNoEncontradoError,
+        PermisoDenegadoError,
     )
 
-    # Registrar blueprint
     app.register_blueprint(usuarios_bp, url_prefix="/api/v1/usuarios")
+    app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
 
-    # Endpoint de salud
     @app.route("/health", methods=["GET"])
     def health():
         return {
@@ -48,7 +40,6 @@ def crear_app():
             "version": API_VERSION
         }, 200
 
-    # Manejadores de error de dominio
     @app.errorhandler(CorreoYaRegistradoError)
     def manejar_correo_duplicado(error):
         return {"message": str(error)}, 400
@@ -61,7 +52,10 @@ def crear_app():
     def manejar_usuario_no_encontrado(error):
         return {"message": str(error)}, 404
 
-    # Manejadores globales
+    @app.errorhandler(PermisoDenegadoError)
+    def manejar_permiso_denegado(error):
+        return {"message": str(error)}, 403
+
     @app.errorhandler(404)
     def recurso_no_encontrado(error):
         return {"success": False, "error": {"message": "Recurso no encontrado"}}, 404

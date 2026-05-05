@@ -20,7 +20,11 @@ def crear_app():
     migrate.init_app(app, db)
     CORS(app, origins=app.config["CORS_ALLOWED_ORIGINS"])
 
-    from app.dominios.usuarios import modelos
+    # Importar modelos para que Flask-Migrate los detecte
+    from app.dominios.usuarios import modelos as usuarios_modelos
+    from app.dominios.alojamientos import modelos as alojamientos_modelos
+
+    # Registrar blueprint de usuarios y admin
     from app.dominios.usuarios.controladores import usuarios_bp, admin_bp
     from app.dominios.usuarios.servicios import (
         CorreoYaRegistradoError,
@@ -29,15 +33,30 @@ def crear_app():
         PermisoDenegadoError,
     )
 
-    app.register_blueprint(usuarios_bp, url_prefix="/api/v1/usuarios")
-    app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
+    app.register_blueprint(usuarios_bp, url_prefix=f"/api/{API_VERSION}/usuarios")
+    app.register_blueprint(admin_bp, url_prefix=f"/api/{API_VERSION}/admin")
+
+    # Registrar blueprint de alojamientos
+    from app.dominios.alojamientos.controladores import alojamientos_bp
+    from app.dominios.alojamientos.servicios import (
+        AlojamientoServicio,
+        AlojamientoNoEncontradoError,
+    )
+    from app.dominios.alojamientos import controladores as alojamientos_ctrl
+
+    alojamientos_ctrl.alojamiento_servicio = AlojamientoServicio()
+
+    app.register_blueprint(
+        alojamientos_bp,
+        url_prefix=f"/api/{API_VERSION}/alojamientos",
+    )
 
     @app.route("/health", methods=["GET"])
     def health():
         return {
             "status": "ok",
             "service": "alojamientos-api",
-            "version": API_VERSION
+            "version": API_VERSION,
         }, 200
 
     @app.errorhandler(CorreoYaRegistradoError)
@@ -55,6 +74,10 @@ def crear_app():
     @app.errorhandler(PermisoDenegadoError)
     def manejar_permiso_denegado(error):
         return {"message": str(error)}, 403
+
+    @app.errorhandler(AlojamientoNoEncontradoError)
+    def manejar_alojamiento_no_encontrado(error):
+        return {"success": False, "error": {"message": str(error)}}, 404
 
     @app.errorhandler(404)
     def recurso_no_encontrado(error):

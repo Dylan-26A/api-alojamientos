@@ -58,6 +58,39 @@ def usuario_autenticado(client):
 
 
 @pytest.fixture
+def usuario_auth2(client):
+    """Crea un segundo usuario unico y devuelve token + headers."""
+    import uuid
+
+    email = f"user2-{uuid.uuid4().hex[:8]}@ejemplo.com"
+
+    client.post(
+        "/api/v1/usuarios/registro",
+        json={
+            "correo": email,
+            "contrasena": "123456"
+        }
+    )
+
+    response = client.post(
+        "/api/v1/usuarios/login",
+        json={
+            "correo": email,
+            "contrasena": "123456"
+        }
+    )
+
+    token = response.get_json()["token"]
+
+    return {
+        "token": token,
+        "headers": {
+            "Authorization": f"Bearer {token}"
+        }
+    }
+
+
+@pytest.fixture
 def admin_autenticado(client):
     client.post(
         "/api/v1/usuarios/registro",

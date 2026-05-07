@@ -54,7 +54,7 @@ API REST desarrollada con Flask para la gestión de usuarios y alojamientos.
 
 
 
-```text
+
 
 app/
 
@@ -78,9 +78,9 @@ migrations/
 
 scripts/
 
-## Endpoints principales
+\# Endpoints principales
 
-Usuarios
+\## Usuarios
 
 POST /api/v1/usuarios/registro
 
